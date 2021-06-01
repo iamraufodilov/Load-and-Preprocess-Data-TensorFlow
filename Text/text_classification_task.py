@@ -159,3 +159,57 @@ int_model.compile(
     optimizer='adam',
     metrics=['accuracy'])
 history = int_model.fit(int_train_ds, validation_data=int_val_ds, epochs=5)
+
+
+# evluate the both model on test dataset
+binary_loss, binary_accuracy = binary_model.evaluate(binary_test_ds)
+int_loss, int_accuracy = int_model.evaluate(int_test_ds)
+
+print("Binary model accuracy: {:2.2%}".format(binary_accuracy))
+print("Int model accuracy: {:2.2%}".format(int_accuracy))
+
+
+# another method is to put vectorization layer to model inside
+export_model = tf.keras.Sequential(
+    [binary_vectorize_layer, binary_model,
+     layers.Activation('sigmoid')])
+
+export_model.compile(
+    loss=losses.SparseCategoricalCrossentropy(from_logits=False),
+    optimizer='adam',
+    metrics=['accuracy'])
+
+# Test it with `raw_test_ds`, which yields raw strings
+loss, accuracy = export_model.evaluate(raw_test_ds)
+print("Accuracy: {:2.2%}".format(binary_accuracy))
+
+
+# create function to get class label
+def get_string_labels(predicted_scores_batch):
+  predicted_int_labels = tf.argmax(predicted_scores_batch, axis=1)
+  predicted_labels = tf.gather(raw_train_ds.class_names, predicted_int_labels)
+  return predicted_labels
+
+
+# predict unseen custom example data
+inputs = [
+    "how do I extract keys from a dict into a list?",  # python
+    "debug public static void main(string[] args) {...}",  # java
+]
+predicted_scores = export_model.predict(inputs)
+predicted_labels = get_string_labels(predicted_scores)
+for input, label in zip(inputs, predicted_labels):
+  print("Question: ", input)
+  print("Predicted label: ", label.numpy())
+
+
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+# CONCLUSION
+'''
+in this experiment we load dataset
+we preapre dataset for training in case we use two type of formatting binary and int 
+then we vectorize data
+we train the model
+we evaluate the model
+we predict unseen custom example 
+'''
